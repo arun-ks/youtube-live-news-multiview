@@ -1,0 +1,16 @@
+{
+  "name": "youtube-live-news-multiview",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A dependency-free YouTube live news multiview dashboard for Netlify.",
+  "scripts": {
+    "check": "node --check public/js/app.js && node --check public/js/defaults.js && node --check public/js/store.js && node --check public/js/players.js && node --check netlify/functions/resolve-feeds.mjs",
+    "test": "node --test",
+    "dev": "netlify dev",
+    "build": "node scripts/build-check.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

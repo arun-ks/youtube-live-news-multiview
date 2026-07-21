@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>YouTube Live News Multiview</title>
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<header class="topbar">
+  <div>
+    <h1>YouTube Live News Multiview</h1>
+    <p>Monitor up to 12 enabled YouTube feeds. Only one feed has audio.</p>
+  </div>
+  <nav>
+    <button class="tab active" data-tab="feeds">Feeds</button>
+    <button class="tab" data-tab="monitor">Monitor</button>
+  </nav>
+</header>
+<main>
+  <section id="feeds-view" class="view">
+    <div id="first-run" class="panel hidden"></div>
+    <div class="toolbar panel">
+      <input id="feed-name" placeholder="Display name">
+      <input id="feed-url" placeholder="YouTube @handle, channel, or video URL">
+      <button id="add-feed">Add feed</button>
+      <button id="refresh-feeds">Check enabled feeds</button>
+      <select id="refresh-mode" aria-label="Refresh mode">
+        <option value="economy">Economy</option>
+        <option value="normal">Normal</option>
+        <option value="manual">Manual only</option>
+      </select>
+    </div>
+    <div id="status" class="status" aria-live="polite"></div>
+    <div id="feed-list" class="feed-list"></div>
+    <div class="panel secondary-actions">
+      <button id="export-config">Export configuration</button>
+      <label class="button-like">Import configuration<input id="import-config" type="file" accept="application/json" hidden></label>
+      <button id="reset-app" class="danger">Reset local data</button>
+    </div>
+  </section>
+
+  <section id="monitor-view" class="view hidden">
+    <div class="toolbar panel">
+      <button id="monitor-refresh">Refresh statuses</button>
+      <button id="mute-all">Mute all</button>
+      <label>Columns
+        <select id="columns">
+          <option value="auto">Auto</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
+        </select>
+      </label>
+      <span id="monitor-summary"></span>
+    </div>
+    <div id="monitor-grid" class="monitor-grid"></div>
+  </section>
+</main>
+<script type="module" src="/js/app.js"></script>
+</body>
+</html>
