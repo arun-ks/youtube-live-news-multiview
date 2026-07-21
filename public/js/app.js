@@ -56,16 +56,14 @@ async function refreshFeeds(){
 function renderMonitor(){
   const items=state.feeds.filter(f=>f.enabled).sort((a,b)=>a.order-b.order).map(feed=>({feed,result:resolution.get(feed.id)})).filter(x=>x.result?.ok&&x.result.videoId&&x.result.embeddable!==false);
   $('monitor-summary').textContent=`${items.length} playable live/upcoming feeds`;
-  $('monitor-grid').style.gridTemplateColumns=state.columns==='auto'?'':`repeat(${state.columns},minmax(0,1fr))`;
-  $('monitor-grid').innerHTML=items.length?items.map(({feed,result})=>`<article class="viewport ${state.lastAudioFeedId===feed.id?'audio':''}" data-viewport="${feed.id}"><div class="viewport-header"><button data-select-audio="${feed.id}">🔊 ${escapeHtml(feed.name)}</button><span class="badge ${result.state}">${result.state}</span><span>${fmtViewers(result.viewers)}</span></div><div class="player" id="player-${feed.id}"></div></article>`).join(''):'<div class="empty panel">Check feeds first. Live and upcoming embeddable streams will appear here.</div>';
+  $('monitor-grid').innerHTML=items.length?items.map(({feed})=>`<article class="viewport ${state.lastAudioFeedId===feed.id?'audio':''}" data-viewport="${feed.id}"><button class="audio-select" data-select-audio="${feed.id}" title="Use audio from ${escapeHtml(feed.name)}" aria-label="Use audio from ${escapeHtml(feed.name)}">🔊</button><div class="player" id="player-${feed.id}"></div></article>`).join(''):'<div class="empty panel">Check feeds first. Live and upcoming embeddable streams will appear here.</div>';
   if(items.length) mountPlayers(items.map(({feed,result})=>({id:feed.id,videoId:result.videoId})),id=>{state.lastAudioFeedId=id;persist();selectAudio(id);document.querySelectorAll('.viewport').forEach(v=>v.classList.toggle('audio',v.dataset.viewport===id));});
 }
-function switchTab(name){document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));$('feeds-view').classList.toggle('hidden',name!=='feeds');$('monitor-view').classList.toggle('hidden',name!=='monitor');if(name==='monitor')renderMonitor();}
+function switchTab(name){document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));$('feeds-view').classList.toggle('hidden',name!=='feeds');$('monitor-view').classList.toggle('hidden',name!=='monitor');$('monitor-controls').classList.toggle('hidden',name!=='monitor');if(name==='monitor')renderMonitor();}
 function configureRefresh(){clearInterval(refreshTimer);if(state.refreshMode==='manual')return;const ms=state.refreshMode==='normal'?2*60_000:5*60_000;refreshTimer=setInterval(()=>{if(!document.hidden)refreshFeeds();},ms);}
 
 $('add-feed').onclick=addFeed;$('refresh-feeds').onclick=refreshFeeds;$('monitor-refresh').onclick=refreshFeeds;$('mute-all').onclick=muteAll;
 $('refresh-mode').value=state.refreshMode;$('refresh-mode').onchange=e=>{state.refreshMode=e.target.value;persist();configureRefresh();};
-$('columns').value=state.columns;$('columns').onchange=e=>{state.columns=e.target.value;persist();renderMonitor();};
 $('export-config').onclick=()=>exportState(state);
 $('import-config').onchange=async e=>{try{const imported=JSON.parse(await e.target.files[0].text());if(!Array.isArray(imported.feeds))throw new Error('Missing feeds array.');state={...state,...imported};persist();resolution.clear();renderFeeds();showFirstRun();setStatus('Configuration imported.');}catch(error){setStatus(`Import failed: ${error.message}`);}e.target.value='';};
 $('reset-app').onclick=()=>{if(confirm('Delete all locally saved feeds and settings?')){localStorage.clear();location.reload();}};

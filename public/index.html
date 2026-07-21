@@ -8,14 +8,15 @@
 </head>
 <body>
 <header class="topbar">
-  <div>
-    <h1>YouTube Live News Multiview</h1>
-    <p>Monitor up to 12 enabled YouTube feeds. Only one feed has audio.</p>
-  </div>
-  <nav>
+  <nav class="main-nav" aria-label="Main views">
     <button class="tab active" data-tab="feeds">Feeds</button>
     <button class="tab" data-tab="monitor">Monitor</button>
   </nav>
+  <div id="monitor-controls" class="monitor-controls hidden">
+    <button id="monitor-refresh">Refresh</button>
+    <button id="mute-all">Mute all</button>
+    <span id="monitor-summary"></span>
+  </div>
 </header>
 <main>
   <section id="feeds-view" class="view">
@@ -41,16 +42,6 @@
   </section>
 
   <section id="monitor-view" class="view hidden">
-    <div class="toolbar panel">
-      <button id="monitor-refresh">Refresh statuses</button>
-      <button id="mute-all">Mute all</button>
-      <label>Columns
-        <select id="columns">
-          <option value="auto">Auto</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
-        </select>
-      </label>
-      <span id="monitor-summary"></span>
-    </div>
     <div id="monitor-grid" class="monitor-grid"></div>
   </section>
 </main>
