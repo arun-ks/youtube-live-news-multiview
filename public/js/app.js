@@ -1,0 +1,51 @@
+import {DEFAULT_COLLECTIONS} from "./defaults.js";
+import {loadState,saveState,makeFeed,normalizeUrl} from "./store.js";
+import {PlayerManager} from "./youtube-player.js";
+
+const state=loadState();const players=new PlayerManager();let refreshTimer=null;let resolving=false;
+const $=s=>document.querySelector(s);const $$=s=>[...document.querySelectorAll(s)];
+const escapeHtml=s=>String(s??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
+
+function persist(){saveState(state)}
+function switchView(name){$$('.view').forEach(v=>v.classList.toggle('active',v.id===`${name}-view`));$$('.tab').forEach(t=>t.classList.toggle('active',t.dataset.view===name));if(name==='monitor')renderMonitor()}
+$$('.tab').forEach(t=>t.addEventListener('click',()=>switchView(t.dataset.view)));
+
+function installCollection(collection){let added=0;for(const item of collection.feeds){if(!state.feeds.some(f=>f.url.toLowerCase()===item.url.toLowerCase())){state.feeds.push(makeFeed({...item,collectionId:collection.id}));added++}}if(!state.installedCollections.includes(collection.id))state.installedCollections.push(collection.id);persist();renderAll();return added}
+function renderPresets(){$('#preset-list').innerHTML=DEFAULT_COLLECTIONS.map(c=>`<article class="preset-card"><h3>${escapeHtml(c.name)}</h3><p>${escapeHtml(c.description)}</p><div class="preset-channels">${c.feeds.map(f=>`<span class="chip">${escapeHtml(f.name)}</span>`).join('')}</div><button data-install="${c.id}" class="primary">${state.installedCollections.includes(c.id)?'Add missing feeds':'Install collection'}</button></article>`).join('');$$('[data-install]').forEach(b=>b.onclick=()=>{const c=DEFAULT_COLLECTIONS.find(x=>x.id===b.dataset.install);const n=installCollection(c);alert(n?`Added ${n} feed(s).`:'All feeds from this collection already exist.')})}
+
+function statusLabel(feed){const r=feed.resolved;if(!r)return 'Not checked';if(r.error)return r.error;return r.liveStatus==='live'?`LIVE${r.concurrentViewers?` · ${Number(r.concurrentViewers).toLocaleString()} watching`:''}`:r.liveStatus==='upcoming'?'Upcoming':r.liveStatus==='none'?'No current live stream':r.liveStatus}
+function renderFeeds(){$('#feed-list').innerHTML=state.feeds.length?state.feeds.map(f=>`<article class="feed-row"><input class="feed-toggle" data-id="${f.id}" type="checkbox" ${f.enabled?'checked':''} aria-label="Enable ${escapeHtml(f.name)}"><div class="feed-main"><strong>${escapeHtml(f.name)}</strong><small>${escapeHtml(f.url)}</small><div class="feed-state ${f.resolved?.liveStatus==='live'?'live':''}">${escapeHtml(statusLabel(f))}</div></div><div class="feed-actions"><button data-check="${f.id}">Check</button><button data-edit="${f.id}">Edit</button><button data-up="${f.id}" title="Move up">↑</button><button data-down="${f.id}" title="Move down">↓</button><button data-delete="${f.id}" class="danger">Delete</button></div></article>`).join(''):'<div class="empty-state"><h3>No feeds saved</h3><p>Install a collection or add a YouTube URL.</p></div>';
+  $$('.feed-toggle').forEach(x=>x.onchange=()=>{state.feeds.find(f=>f.id===x.dataset.id).enabled=x.checked;persist();renderMonitor()});
+  $$('[data-delete]').forEach(b=>b.onclick=()=>{const f=state.feeds.find(x=>x.id===b.dataset.delete);if(confirm(`Delete ${f.name}?`)){state.feeds=state.feeds.filter(x=>x.id!==f.id);players.destroy(f.id);persist();renderAll()}});
+  $$('[data-check]').forEach(b=>b.onclick=()=>resolveFeeds([b.dataset.check],true));
+  $$('[data-edit]').forEach(b=>b.onclick=()=>openEdit(b.dataset.edit));
+  $$('[data-up],[data-down]').forEach(b=>b.onclick=()=>moveFeed(b.dataset.up||b.dataset.down,b.dataset.up?-1:1));
+}
+function moveFeed(id,delta){const i=state.feeds.findIndex(f=>f.id===id),j=i+delta;if(i<0||j<0||j>=state.feeds.length)return;[state.feeds[i],state.feeds[j]]=[state.feeds[j],state.feeds[i]];persist();renderAll()}
+function openEdit(id){const f=state.feeds.find(x=>x.id===id);$('#edit-feed-id').value=f.id;$('#edit-feed-name').value=f.name;$('#edit-feed-url').value=f.url;$('#edit-dialog').showModal()}
+$('#edit-feed-form').addEventListener('submit',e=>{if(e.submitter?.value==='cancel')return;const f=state.feeds.find(x=>x.id===$('#edit-feed-id').value);try{f.name=$('#edit-feed-name').value.trim()||f.name;f.url=normalizeUrl($('#edit-feed-url').value);f.resolved=null;persist();renderAll()}catch(err){e.preventDefault();alert(err.message)}});
+
+$('#add-feed-form').addEventListener('submit',async e=>{e.preventDefault();const msg=$('#feed-form-message');try{const url=normalizeUrl($('#feed-url').value);if(state.feeds.some(f=>f.url.toLowerCase()===url.toLowerCase()))throw new Error('This URL is already in your list.');const feed=makeFeed({name:$('#feed-name').value.trim()||url,url});state.feeds.push(feed);persist();$('#add-feed-form').reset();msg.textContent='Feed added. Checking it now…';renderFeeds();await resolveFeeds([feed.id],true);msg.textContent='Feed added.'}catch(err){msg.textContent=err.message}});
+
+async function resolveFeeds(ids=null,force=false){if(resolving)return;const targets=state.feeds.filter(f=>(ids?ids.includes(f.id):f.enabled));if(!targets.length)return;resolving=true;$('#status-summary').textContent='Checking feeds…';try{const response=await fetch('/api/resolve-feeds',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sources:targets.map(f=>({id:f.id,url:f.url})),force})});const data=await response.json();if(!response.ok)throw new Error(data.error||`HTTP ${response.status}`);for(const result of data.results||[]){const f=state.feeds.find(x=>x.id===result.id);if(f){f.resolved=result;if(!f.name||f.name===f.url)f.name=result.channelTitle||result.title||f.name}}persist();renderAll();$('#status-summary').textContent=`Checked ${targets.length} feed(s) · ${new Date().toLocaleTimeString()}`}catch(err){$('#status-summary').textContent=`Status check failed: ${err.message}`}finally{resolving=false}}
+
+function placeholderFor(feed){const r=feed.resolved;if(!r)return 'Status not checked yet.';if(r.error)return r.error;if(r.liveStatus==='upcoming')return `Upcoming: ${r.title||feed.name}`;if(r.liveStatus!=='live')return 'No current live stream found.';return ''}
+function renderMonitor(){const enabled=state.feeds.filter(f=>f.enabled);$('#empty-monitor').classList.toggle('hidden',enabled.length>0);const grid=$('#monitor-grid');players.destroyAll();grid.innerHTML='';grid.dataset.columns=state.settings.columns==='auto'?'':state.settings.columns;for(const feed of enabled){const node=$('#player-card-template').content.cloneNode(true);const card=node.querySelector('.player-card');card.dataset.id=feed.id;node.querySelector('.player-name').textContent=feed.name;const badge=node.querySelector('.live-badge');badge.textContent=feed.resolved?.liveStatus?.toUpperCase()||'UNCHECKED';badge.classList.add(feed.resolved?.liveStatus||'');node.querySelector('.player-title').textContent=feed.resolved?.title||'';node.querySelector('.viewer-count').textContent=feed.resolved?.concurrentViewers?`${Number(feed.resolved.concurrentViewers).toLocaleString()} watching`:'';const link=node.querySelector('.open-youtube');link.href=feed.resolved?.videoUrl||feed.url;const target=node.querySelector('.player-target');target.id=`player-${feed.id}`;node.querySelector('.player-placeholder').textContent=placeholderFor(feed);node.querySelector('.select-audio').onclick=()=>selectAudio(feed.id);node.querySelector('.reload-player').onclick=()=>resolveFeeds([feed.id],true);grid.appendChild(node);if(feed.resolved?.liveStatus==='live'&&feed.resolved.videoId){players.create(feed.id,target.id,feed.resolved.videoId,()=>resolveFeeds([feed.id],true));}}
+  updateAudioUI();
+}
+function selectAudio(id){players.selectAudio(id);state.settings.activeAudioFeedId=id;persist();updateAudioUI()}
+function updateAudioUI(){$$('.player-card').forEach(c=>{const active=c.dataset.id===players.activeId;c.classList.toggle('audio-active',active);c.querySelector('.audio-icon').textContent=active?'🔊':'🔇'})}
+
+$('#start-all').onclick=async()=>{await players.playAll();const preferred=state.settings.activeAudioFeedId;if(preferred&&players.players.has(preferred))players.selectAudio(preferred);updateAudioUI()};
+$('#mute-all').onclick=()=>{players.muteAll();state.settings.activeAudioFeedId=null;persist();updateAudioUI()};
+$('#refresh-status').onclick=()=>resolveFeeds(null,true);
+$('#column-count').value=state.settings.columns;$('#column-count').onchange=e=>{state.settings.columns=e.target.value;persist();renderMonitor()};
+$('#refresh-mode').value=state.settings.refreshMode;$('#refresh-mode').onchange=e=>{state.settings.refreshMode=e.target.value;persist();scheduleRefresh()};
+function scheduleRefresh(){clearInterval(refreshTimer);if(state.settings.refreshMode==='manual')return;const ms=state.settings.refreshMode==='normal'?5*60_000:10*60_000;refreshTimer=setInterval(()=>{if(!document.hidden)resolveFeeds()},ms)}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&state.settings.refreshMode!=='manual')resolveFeeds()});
+
+$('#export-config').onclick=()=>{const blob=new Blob([JSON.stringify({version:1,feeds:state.feeds,installedCollections:state.installedCollections,settings:state.settings},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`live-news-multiview-${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(a.href)};
+$('#import-config').onchange=async e=>{try{const parsed=JSON.parse(await e.target.files[0].text());if(!Array.isArray(parsed.feeds))throw new Error('Invalid configuration file.');state.feeds=parsed.feeds;state.installedCollections=parsed.installedCollections||[];state.settings={...state.settings,...parsed.settings};persist();renderAll()}catch(err){alert(err.message)}finally{e.target.value=''}};
+$('#restore-defaults').onclick=()=>{let total=0;for(const c of DEFAULT_COLLECTIONS)total+=installCollection(c);alert(total?`Added ${total} missing default feed(s).`:'All default feeds already exist.')};
+function renderAll(){renderFeeds();renderPresets();if($('#monitor-view').classList.contains('active'))renderMonitor()}
+if(!state.feeds.length){installCollection(DEFAULT_COLLECTIONS[0])}renderAll();scheduleRefresh();resolveFeeds();
