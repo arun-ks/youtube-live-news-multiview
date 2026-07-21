@@ -6,6 +6,11 @@ Production site: https://youtube-live-news-multiview.netlify.app/
 
 Repository: https://github.com/arun-ks/youtube-live-news-multiview
 
+
+## Inspiration
+I had seen this https://news.aromalsanthosh.com/ some time ago, but forgot to keep the link so wanted to make something similar, allowing users to easily edit the list of channels.
+Luckily, I tracked the source of the page : https://github.com/aromalsanthosh/kerala-news-live  
+
 ## Features
 
 - Save up to 12 YouTube channel, handle or video URLs.
