@@ -1,0 +1,17 @@
+{
+  "name": "youtube-live-news-multiview",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "netlify dev",
+    "serve": "netlify dev",
+    "check": "node --check netlify/functions/resolve-feeds.mjs && node --check public/js/app.js && node --check public/js/store.js && node --check public/js/defaults.js && node --check public/js/youtube-player.js"
+  },
+  "devDependencies": {
+    "netlify-cli": "^23.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
