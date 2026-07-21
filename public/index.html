@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Monitor multiple YouTube live news feeds with one active audio source.">
+  <title>Live News Multiview</title>
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>Live News Multiview</h1>
+      <p>Multiple YouTube live feeds. One active audio source.</p>
+    </div>
+    <nav class="tabs" aria-label="Main views">
+      <button class="tab active" data-view="monitor">Monitor</button>
+      <button class="tab" data-view="feeds">Feeds</button>
+      <button class="tab" data-view="presets">Collections</button>
+    </nav>
+  </header>
+
+  <main>
+    <section id="monitor-view" class="view active">
+      <div class="toolbar">
+        <button id="start-all" class="primary">Start enabled feeds</button>
+        <button id="mute-all">Mute all</button>
+        <button id="refresh-status">Refresh status</button>
+        <label>Columns
+          <select id="column-count">
+            <option value="auto">Auto</option><option value="1">1</option><option value="2">2</option>
+            <option value="3">3</option><option value="4">4</option>
+          </select>
+        </label>
+        <label>Refresh
+          <select id="refresh-mode">
+            <option value="economy">Economy (10 min)</option>
+            <option value="normal">Normal (5 min)</option>
+            <option value="manual">Manual only</option>
+          </select>
+        </label>
+        <span id="status-summary" class="status-summary"></span>
+      </div>
+      <div id="monitor-grid" class="monitor-grid" aria-live="polite"></div>
+      <div id="empty-monitor" class="empty-state hidden">
+        <h2>No enabled feeds</h2>
+        <p>Open Feeds or Collections and enable at least one source.</p>
+      </div>
+    </section>
+
+    <section id="feeds-view" class="view">
+      <div class="panel-header">
+        <div><h2>Your feeds</h2><p>Paste a YouTube channel, handle, video, or youtu.be URL.</p></div>
+        <div class="actions"><button id="export-config">Export JSON</button><label class="button-like">Import JSON<input id="import-config" type="file" accept="application/json" hidden></label></div>
+      </div>
+      <form id="add-feed-form" class="add-form">
+        <input id="feed-url" type="url" placeholder="https://www.youtube.com/@ChannelHandle" required>
+        <input id="feed-name" type="text" placeholder="Optional custom name">
+        <button class="primary" type="submit">Add feed</button>
+      </form>
+      <p id="feed-form-message" class="form-message" role="status"></p>
+      <div id="feed-list" class="feed-list"></div>
+    </section>
+
+    <section id="presets-view" class="view">
+      <div class="panel-header">
+        <div><h2>Starting collections</h2><p>Install any collection without overwriting your existing feeds.</p></div>
+      </div>
+      <div id="preset-list" class="preset-list"></div>
+      <button id="restore-defaults">Restore all default collections</button>
+    </section>
+  </main>
+
+  <dialog id="edit-dialog">
+    <form method="dialog" id="edit-feed-form">
+      <h2>Edit feed</h2>
+      <input id="edit-feed-id" type="hidden">
+      <label>Name<input id="edit-feed-name" type="text"></label>
+      <label>URL<input id="edit-feed-url" type="url" required></label>
+      <div class="dialog-actions"><button value="cancel">Cancel</button><button id="save-feed" value="default" class="primary">Save</button></div>
+    </form>
+  </dialog>
+
+  <template id="player-card-template">
+    <article class="player-card">
+      <header class="player-header">
+        <button class="select-audio" title="Make this the active audio feed"><span class="audio-icon">🔇</span><span class="player-name"></span></button>
+        <span class="live-badge"></span>
+        <button class="reload-player" title="Reload this feed">↻</button>
+        <a class="open-youtube" target="_blank" rel="noopener noreferrer" title="Open on YouTube">↗</a>
+      </header>
+      <div class="player-frame"><div class="player-target"></div><div class="player-placeholder"></div></div>
+      <footer class="player-meta"><span class="player-title"></span><span class="viewer-count"></span></footer>
+    </article>
+  </template>
+
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>
